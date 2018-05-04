@@ -12,7 +12,7 @@ Vajalik on Java VM eelnev installatsioon. Arenduseks on kasutatud Oracle Java jd
 
  `git clone https://github.com/e-gov/IdP-Test.git`
 
-3. Seadista testid vastavaks testitava klient rakenduse otspunktidele. Selleks on kaks võimalust:
+3. Seadista testid vastavaks testitava idp rakenduse otspunktidele. Selleks on kaks võimalust:
 
 a) Võimalik on ette anda kahe erineva "profiili" properties faile "dev" ja "test" - vastavad properties failid [application-dev.properties](https://github.com/e-gov/IdP-Test/blob/master/src/test/resources/application-dev.properties) ja [application-test.properties](https://github.com/e-gov/IdP-Test/blob/master/src/test/resources/application-test.properties). Vaikeväärtusena on kasutusel profiil "dev", kuid seda on võimalik käivitamisel muuta parameetriga. Vaikeväärtused on seadistatud [application.properties](https://github.com/e-gov/IdP-Test/blob/master/src/test/resources/application.properties) failis.
 
@@ -22,14 +22,19 @@ Parameetrite kirjeldus:
 
 **idp** - Identity Provider, teenus kes pakub autentimist.
 
-| Parameeter | Vaikeväärtus | Vajalik korduvkasutatavatele testidele | Kirjeldus |
-|------------|--------------|----------------------------------------|-----------|
-| test.idp.targetUrl | http://localhost:8889 | Jah | Testitava klientrakenduse Url ja port. |
-| test.idp.MetadataUrl | /metadata | Jah | Teenuse metaandmete otspunkt. |
-| test.idp.keystore | classpath:samlKeystore.jks | Ei | Võtmehoidla asukoht testides kasutatavate võtmete hoidmiseks. |
-| test.idp.keystorePass | changeit | Ei | Võtmehoidla parool. |
-| test.idp.responseSigningKeyId | test_sign | Ei | Võtmehoidlas oleva võtme alias mida kasutatakse SAML vastuse allkirjastamiseks. eIDAS sõlme vastuse simuleerimiseks. |
-| test.idp.responseSigningKeyPass | changeit | Ei | Võtme parool. |
+| Parameeter | Vaikeväärtus | Kirjeldus |
+|------------|--------------|-----------|
+| test.idp.idpUrl | http://localhost:8080 | Testitava idp teenuse Url ja port. |
+| test.idp.idpMetadataUrl | /metadata | Teenuse metaandmete otspunkt. |
+| test.idp.idpStartUrl | /metadata | Teenuse metaandmete otspunkt. |
+| test.idp.idpMidWelcomeUrl | /midwelcome | Teenuse mobiilID autentimise otspunkt. |
+| test.idp.idpMidAuthUrl | /midauth | Teenuse mobiilID autentimise alustamise otspunkt. |
+| test.idp.idpMidCheckUrl | /midcheck | Teenuse mobiilID autentimise staatuse kontrolli otspunkt. |
+| test.idp.eidasNodeMetadata | http://localhost:8080/metadata | Liidestatud eIDAS Nodei URL, port ja metaandmete otspunkt |
+| test.idp.keystore | classpath:samlKeystore.jks | Võtmehoidla asukoht testides kasutatavate võtmete hoidmiseks. |
+| test.idp.keystorePass | changeit | Võtmehoidla parool. |
+| test.idp.responseSigningKeyId | test_sign | Võtmehoidlas oleva võtme alias mida kasutatakse SAML vastuse allkirjastamiseks. eIDAS sõlme vastuse simuleerimiseks. |
+| test.idp.responseSigningKeyPass | changeit | Võtme parool. |
 
 4. Käivita testid:
 
@@ -39,7 +44,7 @@ Testimiseks käivita kõik testid
 
 Testidele parameetrite ette andmine käivitamisel:
 
-`./mvnw clean test -Dtest.idp.targetUrl=http://localhost:1881`
+`./mvnw clean test -Dtest.idp.idpUrl=http://localhost:1881`
 
 5. Kontrolli testide tulemusi
 
