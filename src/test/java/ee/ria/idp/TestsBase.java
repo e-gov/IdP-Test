@@ -84,6 +84,7 @@ public abstract class TestsBase {
 
     protected Credential signatureCredential;
     protected Credential encryptionCredential;
+    protected Credential decryptionCredential;
     protected CookieFilter cookieFilter;
 
     @Before
@@ -100,7 +101,8 @@ public abstract class TestsBase {
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
             Resource resource = resourceLoader.getResource(testEidasIdpProperties.getKeystore());
             keystore.load(resource.getInputStream(), testEidasIdpProperties.getKeystorePass().toCharArray());
-            signatureCredential = getCredential(keystore, testEidasIdpProperties.getResponseSigningKeyId(), testEidasIdpProperties.getResponseSigningKeyPass() );
+            signatureCredential = getCredential(keystore, testEidasIdpProperties.getRequestSigningKeyId(), testEidasIdpProperties.getRequestSigningKeyPass() );
+            decryptionCredential = getCredential(keystore, testEidasIdpProperties.getResponseDecryptionKeyId(), testEidasIdpProperties.getResponseDecryptionKeyPass() );
             encryptionCredential = getEncryptionCredentialFromMetaData(getMetadataBody());
         } catch (Exception e) {
             throw new RuntimeException("Something went wrong initializing credentials:", e);
@@ -139,6 +141,7 @@ public abstract class TestsBase {
            given()
                 .filter(cookieFilter).relaxedHTTPSValidation()
                 .formParam("SAMLRequest", samlRequest)
+                .formParam("messageFormat", "eidas")
                 .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
 //                .log().all()
                 .when()
@@ -328,7 +331,7 @@ public abstract class TestsBase {
     }
 
     protected Assertion decryptAssertion(EncryptedAssertion encryptedAssertion) {
-        StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(signatureCredential);
+        StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(decryptionCredential);
 
         Decrypter decrypter = new Decrypter(null, keyInfoCredentialResolver, new InlineEncryptedKeyResolver());
         decrypter.setRootInNewDocument(true);

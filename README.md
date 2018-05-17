@@ -33,8 +33,10 @@ Parameetrite kirjeldus:
 | test.idp.eidasNodeMetadata | http://localhost:8080/metadata | Liidestatud eIDAS Nodei URL, port ja metaandmete otspunkt |
 | test.idp.keystore | classpath:samlKeystore.jks | Võtmehoidla asukoht testides kasutatavate võtmete hoidmiseks. |
 | test.idp.keystorePass | changeit | Võtmehoidla parool. |
-| test.idp.responseSigningKeyId | test_sign | Võtmehoidlas oleva võtme alias mida kasutatakse SAML vastuse allkirjastamiseks. eIDAS sõlme vastuse simuleerimiseks. |
-| test.idp.responseSigningKeyPass | changeit | Võtme parool. |
+| test.idp.requestSigningKeyId | test_sign | Võtmehoidlas oleva võtme alias mida kasutatakse SAML päringu allkirjastamiseks. eIDAS sõlme päringu simuleerimiseks. |
+| test.idp.requestSigningKeyPass | changeit | Võtme parool. |
+| test.idp.responseDecryptionKeyId | test_sign | Võtmehoidlas oleva võtme alias mida kasutatakse SAML päringu allkirjastamiseks. eIDAS sõlme päringu simuleerimiseks. |
+| test.idp.responseDecryptionKeyPass | changeit | Võtme parool. |
 
 4. Käivita testid:
 

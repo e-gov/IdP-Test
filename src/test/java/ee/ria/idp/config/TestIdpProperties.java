@@ -10,11 +10,46 @@ public class TestIdpProperties {
     private String eidasNodeMetadata;
     private String keystore;
     private String keystorePass;
-    private String responseSigningKeyId;
-    private String responseSigningKeyPass;
+    private String requestSigningKeyId;
+    private String requestSigningKeyPass;
+    private String responseDecryptionKeyId;
+    private String responseDecryptionKeyPass;
     private String idpUrl;
     private String idpMetadataUrl;
     private String idpStartUrl;
+
+    public String getRequestSigningKeyId() {
+        return requestSigningKeyId;
+    }
+
+    public void setRequestSigningKeyId(String requestSigningKeyId) {
+        this.requestSigningKeyId = requestSigningKeyId;
+    }
+
+    public String getRequestSigningKeyPass() {
+        return requestSigningKeyPass;
+    }
+
+    public void setRequestSigningKeyPass(String requestSigningKeyPass) {
+        this.requestSigningKeyPass = requestSigningKeyPass;
+    }
+
+    public String getResponseDecryptionKeyId() {
+        return responseDecryptionKeyId;
+    }
+
+    public void setResponseDecryptionKeyId(String responseDecryptionKeyId) {
+        this.responseDecryptionKeyId = responseDecryptionKeyId;
+    }
+
+    public String getResponseDecryptionKeyPass() {
+        return responseDecryptionKeyPass;
+    }
+
+    public void setResponseDecryptionKeyPass(String responseDecryptionKeyPass) {
+        this.responseDecryptionKeyPass = responseDecryptionKeyPass;
+    }
+
     private String idpMidWelcomeUrl;
     private String idpMidAuthUrl;
     private String idpMidCheckUrl;
@@ -65,22 +100,6 @@ public class TestIdpProperties {
 
     public void setKeystorePass(String keystorePass) {
         this.keystorePass = keystorePass;
-    }
-
-    public String getResponseSigningKeyId() {
-        return responseSigningKeyId;
-    }
-
-    public void setResponseSigningKeyId(String responseSigningKeyId) {
-        this.responseSigningKeyId = responseSigningKeyId;
-    }
-
-    public String getResponseSigningKeyPass() {
-        return responseSigningKeyPass;
-    }
-
-    public void setResponseSigningKeyPass(String responseSigningKeyPass) {
-        this.responseSigningKeyPass = responseSigningKeyPass;
     }
 
     public String getIdpUrl() {
