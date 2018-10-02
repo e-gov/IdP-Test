@@ -1,5 +1,6 @@
 # Eesti idp integratsioonitestid
-
+**Arenduseks on kasutatud Oracle Java jdk 1.8.0_162 versiooni.**
+**HTTPS ühenduse jaoks on vajalik usaldada kasutatud sertifikaatide CA sertifikaat JAVA võtmehoidlas**
 
 **NB! Antud testid on arenduses ning  muutuvad projekti edenedes.**
 
