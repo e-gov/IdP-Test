@@ -152,7 +152,7 @@ public abstract class TestsBase {
                 .extract().response();
     }
 
-    protected org.opensaml.saml.saml2.core.Response authenticateWithMobileID(String samlRequest, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
+    protected org.opensaml.saml.saml2.core.Response authenticateWithMobileID(String samlRequest,String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
          given()
                 .filter(cookieFilter).relaxedHTTPSValidation()
                 .formParam("SAMLRequest", samlRequest)
@@ -167,6 +167,7 @@ public abstract class TestsBase {
         io.restassured.response.Response response = given()
                 .filter(cookieFilter).relaxedHTTPSValidation()
                 .formParam("SAMLRequest", samlRequest)
+                .formParam("personalCode",idCode)
                 .formParam("phoneNumber", mobNo)
                 .formParam("lang", language)
                 .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))

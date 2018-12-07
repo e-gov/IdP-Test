@@ -22,7 +22,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void idp1_authenticateWithMidSuccess() throws InterruptedException, UnmarshallingException, XMLParserException {
         String samlRequest = getAuthnRequestWithDefault();
         getAuthenticationPage(samlRequest);
-        org.opensaml.saml.saml2.core.Response samlResponse = authenticateWithMobileID(samlRequest, "00000766", "");
+        org.opensaml.saml.saml2.core.Response samlResponse = authenticateWithMobileID(samlRequest, "60001019906","00000766", "");
         Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));
 
         assertEquals("Correct LOA is returned", LOA_HIGH, getLoaValue(assertion));
