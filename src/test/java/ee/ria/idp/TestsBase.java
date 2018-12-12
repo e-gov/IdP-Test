@@ -59,11 +59,9 @@ public abstract class TestsBase {
     @Autowired
     protected TestIdpProperties testEidasIdpProperties;
 
-    protected Credential signatureCredential;
-    protected Credential encryptionCredential;
-    protected Credential decryptionCredential;
-    protected CookieFilter cookieFilter;
-
+    protected static Credential signatureCredential;
+    protected static Credential encryptionCredential;
+    protected static Credential decryptionCredential;
 
     protected Credential getCredential(KeyStore keystore, String keyPairId, String privateKeyPass) {
         try {

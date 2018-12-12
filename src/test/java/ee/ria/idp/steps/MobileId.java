@@ -37,6 +37,12 @@ public class MobileId {
         return samlResponseObj;
     }
 
+    @Step("Authenticate with Mobile-ID")
+    public static Response authenticateWithMobileIdError(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
+        openMidWelcome(flow, samlRequest);
+        return submitMidLogin(flow, samlRequest, idCode, mobNo, language);
+    }
+
     @Step("Open MID welcome page")
     public static Response openMidWelcome(EidasFlow flow, String samlRequest) {
         return given()
@@ -93,6 +99,9 @@ public class MobileId {
     protected static org.opensaml.saml.saml2.core.Response getSamlResponse(String samlResponse) throws XMLParserException, UnmarshallingException {
         return (org.opensaml.saml.saml2.core.Response) XMLObjectSupport.unmarshallFromInputStream(
                 OpenSAMLConfiguration.getParserPool(), new ByteArrayInputStream(samlResponse.getBytes(StandardCharsets.UTF_8)));
+    }
+    public static String extractError(Response response) {
+        return (String) Steps.extractError(response).get(1);
     }
 
 }
