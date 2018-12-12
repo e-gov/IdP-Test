@@ -4,12 +4,11 @@ import com.sun.org.apache.xerces.internal.dom.DOMInputImpl;
 import ee.ria.idp.config.IntegrationTest;
 import ee.ria.idp.config.OpenSAMLConfiguration;
 import ee.ria.idp.config.TestConfiguration;
+import ee.ria.idp.config.TestIdpProperties;
 import ee.ria.idp.utils.OpenSAMLUtils;
+import ee.ria.idp.utils.RequestBuilderUtils;
 import ee.ria.idp.utils.SystemPropertyActiveProfileResolver;
 import ee.ria.idp.utils.XmlUtils;
-import ee.ria.idp.config.TestIdpProperties;
-import ee.ria.idp.utils.RequestBuilderUtils;
-import io.restassured.RestAssured;
 import io.restassured.config.XmlConfig;
 import io.restassured.filter.cookie.CookieFilter;
 import io.restassured.path.xml.XmlPath;
@@ -18,7 +17,6 @@ import net.shibboleth.utilities.java.support.resolver.Criterion;
 import net.shibboleth.utilities.java.support.resolver.ResolverException;
 import net.shibboleth.utilities.java.support.xml.XMLParserException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,8 +50,8 @@ import org.w3c.dom.ls.LSInput;
 import org.w3c.dom.ls.LSResourceResolver;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -61,11 +59,12 @@ import java.security.Security;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
+import java.text.ParseException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-import static ee.ria.idp.config.EidasTestStrings.*;
+import static ee.ria.idp.config.EidasTestStrings.LOA_HIGH;
 import static io.restassured.RestAssured.*;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 import static io.restassured.internal.matcher.xml.XmlXsdMatcher.matchesXsdInClasspath;
@@ -73,7 +72,7 @@ import static io.restassured.internal.matcher.xml.XmlXsdMatcher.matchesXsdInClas
 @RunWith(SpringRunner.class)
 @Category(IntegrationTest.class)
 @ContextConfiguration(classes = TestConfiguration.class)
-@ActiveProfiles( profiles = {"dev"}, resolver = SystemPropertyActiveProfileResolver.class)
+@ActiveProfiles(profiles = {"dev"}, resolver = SystemPropertyActiveProfileResolver.class)
 public abstract class TestsBase {
 
     @Autowired
@@ -88,7 +87,7 @@ public abstract class TestsBase {
     protected CookieFilter cookieFilter;
 
     @Before
-    public void setUp() throws MalformedURLException, InitializationException {
+    public void setUp() throws IOException, InitializationException, ParseException {
         URL url = new URL(testEidasIdpProperties.getIdpUrl());
         port = url.getPort();
         baseURI = url.getProtocol() + "://" + url.getHost();
@@ -101,15 +100,15 @@ public abstract class TestsBase {
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
             Resource resource = resourceLoader.getResource(testEidasIdpProperties.getKeystore());
             keystore.load(resource.getInputStream(), testEidasIdpProperties.getKeystorePass().toCharArray());
-            signatureCredential = getCredential(keystore, testEidasIdpProperties.getRequestSigningKeyId(), testEidasIdpProperties.getRequestSigningKeyPass() );
-            decryptionCredential = getCredential(keystore, testEidasIdpProperties.getResponseDecryptionKeyId(), testEidasIdpProperties.getResponseDecryptionKeyPass() );
+            signatureCredential = getCredential(keystore, testEidasIdpProperties.getRequestSigningKeyId(), testEidasIdpProperties.getRequestSigningKeyPass());
+            decryptionCredential = getCredential(keystore, testEidasIdpProperties.getResponseDecryptionKeyId(), testEidasIdpProperties.getResponseDecryptionKeyPass());
             encryptionCredential = getEncryptionCredentialFromMetaData(getMetadataBody());
         } catch (Exception e) {
             throw new RuntimeException("Something went wrong initializing credentials:", e);
         }
     }
 
-    private Credential getCredential(KeyStore keystore, String keyPairId, String privateKeyPass) {
+    protected Credential getCredential(KeyStore keystore, String keyPairId, String privateKeyPass) {
         try {
             Map<String, String> passwordMap = new HashMap<>();
             passwordMap.put(keyPairId, privateKeyPass);
@@ -125,7 +124,7 @@ public abstract class TestsBase {
         }
     }
 
-    protected String getAuthnRequest (String providerName, String destination, String consumerServiceUrl, String issuerValue, String loa) {
+    protected String getAuthnRequest(String providerName, String destination, String consumerServiceUrl, String issuerValue, String loa) {
 
         AuthnRequest request = new RequestBuilderUtils().buildAuthnRequest(signatureCredential, providerName, destination, consumerServiceUrl, issuerValue, loa);
         String stringResponse = OpenSAMLUtils.getXmlString(request);
@@ -133,83 +132,9 @@ public abstract class TestsBase {
         return new String(Base64.getEncoder().encode(stringResponse.getBytes()));
     }
 
-    protected String getAuthnRequestWithDefault () {
+    protected String getAuthnRequestWithDefault() {
         return getAuthnRequest("TestProvider", testEidasIdpProperties.getIdpStartUrl(), "randomUrl", testEidasIdpProperties.getEidasNodeMetadata(), LOA_HIGH);
     }
-
-    protected void getAuthenticationPage(String samlRequest) {
-           given()
-                .filter(cookieFilter).relaxedHTTPSValidation()
-                .formParam("SAMLRequest", samlRequest)
-                .formParam("messageFormat", "eidas")
-                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-//                .log().all()
-                .when()
-                .post(testEidasIdpProperties.getIdpStartUrl())
-                .then()
-                .statusCode(200)
-//                .log().all()
-                .extract().response();
-    }
-
-    protected org.opensaml.saml.saml2.core.Response authenticateWithMobileID(String samlRequest,String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
-         given()
-                .filter(cookieFilter).relaxedHTTPSValidation()
-                .formParam("SAMLRequest", samlRequest)
-                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-//                .log().all()
-                .when()
-                .post(testEidasIdpProperties.getIdpMidWelcomeUrl())
-                .then()
-//                .log().all()
-                .extract().response();
-
-        io.restassured.response.Response response = given()
-                .filter(cookieFilter).relaxedHTTPSValidation()
-                .formParam("SAMLRequest", samlRequest)
-                .formParam("personalCode",idCode)
-                .formParam("phoneNumber", mobNo)
-                .formParam("lang", language)
-                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-//                .log().all()
-                .when()
-                .post(testEidasIdpProperties.getIdpMidAuthUrl())
-                .then()
-//                .log().all()
-                .extract().response();
-
-        String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
-
-        String samlResponse = pollForAuthentication(sessionToken, 7000);
-
-        String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
-        validateSamlResponseSignature(decodedSamlResponse);
-        org.opensaml.saml.saml2.core.Response samlResponseObj = getSamlResponse(decodedSamlResponse);
-        return samlResponseObj;
-    }
-
-    protected String pollForAuthentication(String sessionToken, Integer intervalMillis) throws InterruptedException {
-        DateTime endTime = new DateTime().plusMillis(intervalMillis*3 + 200);
-        while(new DateTime().isBefore(endTime)) {
-            Thread.sleep(intervalMillis);
-            io.restassured.response.Response response = given()
-                    .filter(cookieFilter)
-                    .relaxedHTTPSValidation()
-                    .redirects().follow(false)
-                    .formParam("sessionToken", sessionToken)
-//                .log().all()
-                    .when()
-                    .post(testEidasIdpProperties.getIdpMidCheckUrl())
-                    .then()
-//                .log().all()
-                    .extract().response();
-            if (response.statusCode() == 200) {
-                return response.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");
-            }
-        }
-        throw new RuntimeException("No MID response in: "+ (intervalMillis*3 + 200) +" millis");
-    }
-
 
     protected String getMetadataBody() {
         return given()
@@ -231,7 +156,7 @@ public abstract class TestsBase {
 
     protected Boolean validateMetadataSchema() {
         given()
-        .config(config().xmlConfig(XmlConfig.xmlConfig().disableLoadingOfExternalDtd()))
+                .config(config().xmlConfig(XmlConfig.xmlConfig().disableLoadingOfExternalDtd()))
                 .when()
                 .get(testEidasIdpProperties.getIdpMetadataUrl())
                 .then().log().ifError()
@@ -244,7 +169,7 @@ public abstract class TestsBase {
         XmlPath metadataXml = new XmlPath(body);
         try {
             java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("EntityDescriptor.Signature.KeyInfo.X509Data.X509Certificate"));
-            validateSignature(body,x509);
+            validateSignature(body, x509);
         } catch (CertificateException e) {
             throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
         }
@@ -254,7 +179,7 @@ public abstract class TestsBase {
         XmlPath metadataXml = new XmlPath(body);
         try {
             java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("AuthnRequest.Signature.KeyInfo.X509Data.X509Certificate"));
-            validateSignature(body,x509);
+            validateSignature(body, x509);
         } catch (CertificateException e) {
             throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
         }
@@ -264,7 +189,7 @@ public abstract class TestsBase {
         XmlPath metadataXml = new XmlPath(body);
         try {
             java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("Response.Signature.KeyInfo.X509Data.X509Certificate"));
-            validateSignature(body,x509);
+            validateSignature(body, x509);
             return true;
         } catch (CertificateException e) {
             throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
@@ -275,7 +200,7 @@ public abstract class TestsBase {
         try {
             x509.checkValidity();
             SignableSAMLObject signableObj = XmlUtils.unmarshallElement(body);
-            X509Credential credential = CredentialSupport.getSimpleCredential(x509,null);
+            X509Credential credential = CredentialSupport.getSimpleCredential(x509, null);
             SignatureValidator.validate(signableObj.getSignature(), credential);
         } catch (SignatureException e) {
             throw new RuntimeException("Signature validation in validateSignature() failed: " + e.getMessage(), e);
@@ -317,7 +242,7 @@ public abstract class TestsBase {
         return x509;
     }
 
-    protected Credential getEncryptionCredentialFromMetaData (String body) throws CertificateException {
+    protected Credential getEncryptionCredentialFromMetaData(String body) throws CertificateException {
         java.security.cert.X509Certificate x509Certificate = getEncryptionCertificate(body);
         BasicX509Credential encryptionCredential = new BasicX509Credential(x509Certificate);
         return encryptionCredential;
