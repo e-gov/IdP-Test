@@ -7,6 +7,7 @@ import ee.ria.idp.utils.AllureRestAssuredFormParam;
 import ee.ria.idp.utils.SamlSigantureUtils;
 import io.qameta.allure.Step;
 import io.restassured.RestAssured;
+import io.restassured.response.Response;
 import net.shibboleth.utilities.java.support.xml.XMLParserException;
 import org.joda.time.DateTime;
 import org.opensaml.core.xml.io.UnmarshallingException;
@@ -22,31 +23,9 @@ import static io.restassured.config.EncoderConfig.encoderConfig;
 public class MobileId {
     @Step("Authenticate with Mobile-ID")
     public static org.opensaml.saml.saml2.core.Response authenticateWithMobileID(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
-        given()
-                .filter(flow.getCookieFilter()).relaxedHTTPSValidation()
-                .filter(new AllureRestAssuredFormParam())
+        openMidWelcome(flow, samlRequest);
 
-                .formParam("SAMLRequest", samlRequest)
-                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-                .log().all()
-                .when()
-                .post(flow.getTestProperties().getIdpMidWelcomeUrl())
-                .then()
-                .log().all()
-                .extract().response();
-
-        io.restassured.response.Response response = given()
-                .filter(flow.getCookieFilter()).relaxedHTTPSValidation()
-                .filter(new AllureRestAssuredFormParam())
-                .formParam("SAMLRequest", samlRequest)
-                .formParam("personalCode", idCode)
-                .formParam("phoneNumber", mobNo)
-                .formParam("lang", language)
-                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-                .when()
-                .post(flow.getTestProperties().getIdpMidAuthUrl())
-                .then()
-                .extract().response();
+        io.restassured.response.Response response = submitMidLogin(flow, samlRequest, idCode, mobNo, language);
 
         String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
 
@@ -56,6 +35,36 @@ public class MobileId {
         SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);
         org.opensaml.saml.saml2.core.Response samlResponseObj = getSamlResponse(decodedSamlResponse);
         return samlResponseObj;
+    }
+
+    @Step("Open MID welcome page")
+    public static Response openMidWelcome(EidasFlow flow, String samlRequest) {
+        return given()
+                .filter(flow.getCookieFilter()).relaxedHTTPSValidation()
+                .filter(new AllureRestAssuredFormParam())
+
+                .formParam("SAMLRequest", samlRequest)
+                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
+                .when()
+                .post(flow.getTestProperties().getIdpUrl() + flow.getTestProperties().getIdpMidWelcomeUrl())
+                .then()
+                .extract().response();
+    }
+
+    @Step("Submit MID login")
+    public static Response submitMidLogin(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) {
+        return given()
+                .filter(flow.getCookieFilter()).relaxedHTTPSValidation()
+                .filter(new AllureRestAssuredFormParam())
+                .formParam("SAMLRequest", samlRequest)
+                .formParam("personalCode", idCode)
+                .formParam("phoneNumber", mobNo)
+                .formParam("lang", language)
+                .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
+                .when()
+                .post(flow.getTestProperties().getIdpUrl() + flow.getTestProperties().getIdpMidAuthUrl())
+                .then()
+                .extract().response();
     }
 
     @Step("Poll Mobile-ID authentication")
@@ -69,11 +78,9 @@ public class MobileId {
                     .relaxedHTTPSValidation()
                     .redirects().follow(false)
                     .formParam("sessionToken", sessionToken)
-                    .log().all()
                     .when()
-                    .post(flow.getTestProperties().getIdpMidCheckUrl())
+                    .post(flow.getTestProperties().getIdpUrl() + flow.getTestProperties().getIdpMidCheckUrl())
                     .then()
-                    .log().all()
                     .extract().response();
             if (response.statusCode() == 200) {
                 return response.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");

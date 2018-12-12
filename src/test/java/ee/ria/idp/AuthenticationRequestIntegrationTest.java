@@ -22,16 +22,10 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
 import javax.xml.transform.TransformerException;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.security.KeyStore;
 import java.security.Security;
-import java.text.ParseException;
 
 import static ee.ria.idp.config.EidasTestStrings.*;
-import static io.restassured.RestAssured.baseURI;
-import static io.restassured.RestAssured.port;
 import static org.junit.Assert.assertEquals;
 
 @SpringBootTest(classes = AuthenticationRequestIntegrationTest.class)
@@ -45,7 +39,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
 
 
     @Before
-    public void setUp() throws InitializationException, IOException, ParseException {
+    public void setUp() throws InitializationException {
         if (!setupComplete) {
             initialize();
             setupComplete = true;
@@ -62,11 +56,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         flow.setup(properties);
     }
 
-    public void initialize() throws InitializationException, MalformedURLException {
-        URL url = new URL(testEidasIdpProperties.getIdpUrl());
-        port = url.getPort();
-        baseURI = url.getProtocol() + "://" + url.getHost();
-
+    public void initialize() throws InitializationException {
         Security.addProvider(new BouncyCastleProvider());
         InitializationService.initialize();
         try {
@@ -83,7 +73,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
 
     @Test
     public void idp1_authenticateWithMidSuccess() throws InterruptedException, UnmarshallingException, XMLParserException, TransformerException {
-        String samlRequest = getAuthnRequestWithDefault();
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
         org.opensaml.saml.saml2.core.Response samlResponse = MobileId.authenticateWithMobileID(flow, samlRequest, "60001019906", "00000766", "");
         Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));

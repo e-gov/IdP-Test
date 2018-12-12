@@ -58,4 +58,14 @@ public class SamlSigantureUtils {
             throw new RuntimeException("Error decrypting assertion", e);
         }
     }
+
+    public static void validateSamlReqSignature(String body) {
+        XmlPath metadataXml = new XmlPath(body);
+        try {
+            java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("AuthnRequest.Signature.KeyInfo.X509Data.X509Certificate"));
+            validateSignature(body, x509);
+        } catch (CertificateException e) {
+            throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
+        }
+    }
 }

@@ -1,33 +1,23 @@
 package ee.ria.idp;
 
-import com.sun.org.apache.xerces.internal.dom.DOMInputImpl;
 import ee.ria.idp.config.IntegrationTest;
-import ee.ria.idp.config.OpenSAMLConfiguration;
 import ee.ria.idp.config.TestConfiguration;
 import ee.ria.idp.config.TestIdpProperties;
-import ee.ria.idp.utils.OpenSAMLUtils;
-import ee.ria.idp.utils.RequestBuilderUtils;
 import ee.ria.idp.utils.SystemPropertyActiveProfileResolver;
 import ee.ria.idp.utils.XmlUtils;
-import io.restassured.config.XmlConfig;
 import io.restassured.filter.cookie.CookieFilter;
 import io.restassured.path.xml.XmlPath;
 import net.shibboleth.utilities.java.support.resolver.CriteriaSet;
 import net.shibboleth.utilities.java.support.resolver.Criterion;
 import net.shibboleth.utilities.java.support.resolver.ResolverException;
-import net.shibboleth.utilities.java.support.xml.XMLParserException;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.junit.Before;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.opensaml.core.config.InitializationException;
-import org.opensaml.core.config.InitializationService;
 import org.opensaml.core.criterion.EntityIdCriterion;
-import org.opensaml.core.xml.io.UnmarshallingException;
 import org.opensaml.core.xml.schema.XSAny;
-import org.opensaml.core.xml.util.XMLObjectSupport;
 import org.opensaml.saml.common.SignableSAMLObject;
-import org.opensaml.saml.saml2.core.*;
+import org.opensaml.saml.saml2.core.Assertion;
+import org.opensaml.saml.saml2.core.Attribute;
+import org.opensaml.saml.saml2.core.EncryptedAssertion;
 import org.opensaml.saml.saml2.encryption.Decrypter;
 import org.opensaml.security.credential.Credential;
 import org.opensaml.security.credential.CredentialSupport;
@@ -41,33 +31,21 @@ import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.w3c.dom.ls.LSInput;
-import org.w3c.dom.ls.LSResourceResolver;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.security.Security;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
-import java.text.ParseException;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-import static ee.ria.idp.config.EidasTestStrings.LOA_HIGH;
-import static io.restassured.RestAssured.*;
+import static io.restassured.RestAssured.config;
+import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
-import static io.restassured.internal.matcher.xml.XmlXsdMatcher.matchesXsdInClasspath;
 
 @RunWith(SpringRunner.class)
 @Category(IntegrationTest.class)
@@ -86,27 +64,6 @@ public abstract class TestsBase {
     protected Credential decryptionCredential;
     protected CookieFilter cookieFilter;
 
-    @Before
-    public void setUp() throws IOException, InitializationException, ParseException {
-        URL url = new URL(testEidasIdpProperties.getIdpUrl());
-        port = url.getPort();
-        baseURI = url.getProtocol() + "://" + url.getHost();
-
-        Security.addProvider(new BouncyCastleProvider());
-        InitializationService.initialize();
-        cookieFilter = new CookieFilter();
-
-        try {
-            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            Resource resource = resourceLoader.getResource(testEidasIdpProperties.getKeystore());
-            keystore.load(resource.getInputStream(), testEidasIdpProperties.getKeystorePass().toCharArray());
-            signatureCredential = getCredential(keystore, testEidasIdpProperties.getRequestSigningKeyId(), testEidasIdpProperties.getRequestSigningKeyPass());
-            decryptionCredential = getCredential(keystore, testEidasIdpProperties.getResponseDecryptionKeyId(), testEidasIdpProperties.getResponseDecryptionKeyPass());
-            encryptionCredential = getEncryptionCredentialFromMetaData(getMetadataBody());
-        } catch (Exception e) {
-            throw new RuntimeException("Something went wrong initializing credentials:", e);
-        }
-    }
 
     protected Credential getCredential(KeyStore keystore, String keyPairId, String privateKeyPass) {
         try {
@@ -124,24 +81,13 @@ public abstract class TestsBase {
         }
     }
 
-    protected String getAuthnRequest(String providerName, String destination, String consumerServiceUrl, String issuerValue, String loa) {
-
-        AuthnRequest request = new RequestBuilderUtils().buildAuthnRequest(signatureCredential, providerName, destination, consumerServiceUrl, issuerValue, loa);
-        String stringResponse = OpenSAMLUtils.getXmlString(request);
-        validateSamlReqSignature(stringResponse);
-        return new String(Base64.getEncoder().encode(stringResponse.getBytes()));
-    }
-
-    protected String getAuthnRequestWithDefault() {
-        return getAuthnRequest("TestProvider", testEidasIdpProperties.getIdpStartUrl(), "randomUrl", testEidasIdpProperties.getEidasNodeMetadata(), LOA_HIGH);
-    }
 
     protected String getMetadataBody() {
         return given()
                 .config(config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
 //                .log().all()
                 .when()
-                .get(testEidasIdpProperties.getIdpMetadataUrl())
+                .get(testEidasIdpProperties.getIdpUrl() + testEidasIdpProperties.getIdpMetadataUrl())
                 .then()
 //                .log().all()
                 .statusCode(200)
@@ -154,43 +100,11 @@ public abstract class TestsBase {
         return metadataXml;
     }
 
-    protected Boolean validateMetadataSchema() {
-        given()
-                .config(config().xmlConfig(XmlConfig.xmlConfig().disableLoadingOfExternalDtd()))
-                .when()
-                .get(testEidasIdpProperties.getIdpMetadataUrl())
-                .then().log().ifError()
-                .statusCode(200)
-                .body(matchesXsdInClasspath("SPschema.xsd").using(new ClasspathResourceResolver()));
-        return true;
-    }
-
     protected void validateMetadataSignature(String body) {
         XmlPath metadataXml = new XmlPath(body);
         try {
             java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("EntityDescriptor.Signature.KeyInfo.X509Data.X509Certificate"));
             validateSignature(body, x509);
-        } catch (CertificateException e) {
-            throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
-        }
-    }
-
-    protected void validateSamlReqSignature(String body) {
-        XmlPath metadataXml = new XmlPath(body);
-        try {
-            java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("AuthnRequest.Signature.KeyInfo.X509Data.X509Certificate"));
-            validateSignature(body, x509);
-        } catch (CertificateException e) {
-            throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
-        }
-    }
-
-    protected Boolean validateSamlResponseSignature(String body) {
-        XmlPath metadataXml = new XmlPath(body);
-        try {
-            java.security.cert.X509Certificate x509 = X509Support.decodeCertificate(metadataXml.getString("Response.Signature.KeyInfo.X509Data.X509Certificate"));
-            validateSignature(body, x509);
-            return true;
         } catch (CertificateException e) {
             throw new RuntimeException("Certificate parsing in validateSignature() failed:" + e.getMessage(), e);
         }
@@ -248,14 +162,6 @@ public abstract class TestsBase {
         return encryptionCredential;
     }
 
-    public class ClasspathResourceResolver implements LSResourceResolver {
-        @Override
-        public LSInput resolveResource(String type, String namespaceURI, String publicId, String systemId, String baseURI) {
-            InputStream resource = ClassLoader.getSystemResourceAsStream(systemId);
-            return new DOMInputImpl(publicId, systemId, baseURI, resource, null);
-        }
-    }
-
     protected Assertion decryptAssertion(EncryptedAssertion encryptedAssertion) {
         StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(decryptionCredential);
 
@@ -267,11 +173,6 @@ public abstract class TestsBase {
         } catch (DecryptionException e) {
             throw new RuntimeException("Error decrypting assertion", e);
         }
-    }
-
-    protected Response getSamlResponse(String samlResponse) throws XMLParserException, UnmarshallingException {
-        return (Response) XMLObjectSupport.unmarshallFromInputStream(
-                OpenSAMLConfiguration.getParserPool(), new ByteArrayInputStream(samlResponse.getBytes(StandardCharsets.UTF_8)));
     }
 
     protected String getAttributeValue(Assertion assertion, String friendlyName) {
