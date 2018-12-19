@@ -29,7 +29,7 @@ public class MobileId {
 
         String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
 
-        String samlResponse = pollForAuthentication(flow, sessionToken, 7000);
+        String samlResponse = pollForAuthentication(flow, sessionToken, 5000);
 
         String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
         SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);
@@ -76,23 +76,59 @@ public class MobileId {
     @Step("Poll Mobile-ID authentication")
     protected static String pollForAuthentication(EidasFlow flow, String sessionToken, Integer intervalMillis) throws InterruptedException {
         DateTime endTime = new DateTime().plusMillis(intervalMillis * 3 + 200);
+        int attemptCounter = 1;
         while (new DateTime().isBefore(endTime)) {
             Thread.sleep(intervalMillis);
-            io.restassured.response.Response response = given()
-                    .filter(flow.getCookieFilter())
-                    .filter(new AllureRestAssuredFormParam())
-                    .relaxedHTTPSValidation()
-                    .redirects().follow(false)
-                    .formParam("sessionToken", sessionToken)
-                    .when()
-                    .post(flow.getTestProperties().getIdpUrl() + flow.getTestProperties().getIdpMidCheckUrl())
-                    .then()
-                    .extract().response();
-            if (response.statusCode() == 200) {
+            io.restassured.response.Response response = pollRequest(flow, sessionToken, attemptCounter);
+            attemptCounter++;
+            //TODO: handle translations
+            if (!response.htmlPath().getList("**.findAll { it.@type == 'submit' }").contains("Uuenda tulemust")) {
                 return response.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");
             }
         }
         throw new RuntimeException("No MID response in: " + (intervalMillis * 3 + 200) + " millis");
+    }
+
+    @Step("Poll Mobile-ID authentication")
+    protected static Response pollForAuthenticationError(EidasFlow flow, String sessionToken, Integer intervalMillis) throws InterruptedException {
+        DateTime endTime = new DateTime().plusMillis(intervalMillis * 3 + 200);
+        int attemptCounter = 1;
+        while (new DateTime().isBefore(endTime)) {
+            Thread.sleep(intervalMillis);
+            io.restassured.response.Response response = pollRequest(flow, sessionToken, attemptCounter);
+            attemptCounter++;
+            if (!response.htmlPath().getList("**.findAll { it.@type == 'submit' }").contains("Uuenda tulemust")) {
+                return response;
+            }
+        }
+        throw new RuntimeException("No MID response in: " + (intervalMillis * 3 + 200) + " millis");
+    }
+
+    @Step("Poll request {attemptCount}")
+    protected static Response pollRequest(EidasFlow flow, String sessionToken, Integer attemptCount) {
+        return given()
+                .filter(flow.getCookieFilter())
+                .filter(new AllureRestAssuredFormParam())
+                .relaxedHTTPSValidation()
+                .redirects().follow(false)
+                .formParam("sessionToken", sessionToken)
+                .when()
+                .post(flow.getTestProperties().getIdpUrl() + flow.getTestProperties().getIdpMidCheckUrl())
+                .then()
+                .extract().response();
+    }
+
+    @Step("Authenticate with Mobile-ID error")
+    public static Response authenticateWithMobileIdPollError(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
+        openMidWelcome(flow, samlRequest);
+
+        io.restassured.response.Response response = submitMidLogin(flow, samlRequest, idCode, mobNo, language);
+
+        String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
+
+        return pollForAuthenticationError(flow, sessionToken, 5000);
+
+
     }
 
     //TODO: utility
@@ -100,6 +136,7 @@ public class MobileId {
         return (org.opensaml.saml.saml2.core.Response) XMLObjectSupport.unmarshallFromInputStream(
                 OpenSAMLConfiguration.getParserPool(), new ByteArrayInputStream(samlResponse.getBytes(StandardCharsets.UTF_8)));
     }
+
     public static String extractError(Response response) {
         return (String) Steps.extractError(response).get(1);
     }

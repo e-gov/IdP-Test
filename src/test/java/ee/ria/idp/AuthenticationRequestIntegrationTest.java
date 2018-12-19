@@ -118,38 +118,48 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdError(flow, samlRequest, "60001019939", "00000266", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
-/*
+
     @Test
     public void mob2_mobileIdAuthenticationRequestToPhoneFailed() throws Exception {
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, "07110066", "60001019947", 500));
-        assertThat(errorMessage, startsWith("Teie mobiiltelefoni ei saa Mobiil-ID autentimise sõnumeid saata."));
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        Requests.getAuthenticationPage(flow, samlRequest);
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019947","07110066", ""));
+        assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
     @Test
     public void mob2_mobileIdAuthenticationTechnicalError() throws Exception {
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, "00000666", "60001019961", 3000));
-        assertThat(errorMessage, startsWith("Autentimine Mobiil-ID-ga ei õnnestunud. Testi oma Mobiil-ID toimimist DigiDoc3 kliendis: http://www.id.ee/index.php?id=35636"));
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        Requests.getAuthenticationPage(flow, samlRequest);
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019961","00000666", ""));
+        assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
     @Test
     public void mob2_mobileIdAuthenticationSimApplicationError() throws Exception {
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, "01200266", "60001019972", 1000));
-        assertThat(errorMessage, startsWith("Teie mobiiltelefoni SIM kaardiga tekkis tõrge."));
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        Requests.getAuthenticationPage(flow, samlRequest);
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019972","01200266", ""));
+        assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
     @Test
     public void mob2_mobileIdAuthenticationPhoneNotInNetwork() throws Exception {
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, "13100266", "60001019983", 1000));
-        assertThat(errorMessage, startsWith("Teie mobiiltelefon on levialast väljas."));
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        Requests.getAuthenticationPage(flow, samlRequest);
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019983","13100266", ""));
+        assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
     @Test
     public void mob3_mobileIdAuthenticationUserCancels() throws Exception {
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, "01100266", "60001019950", 1000));
-        assertThat(errorMessage, startsWith("Autentimine on katkestatud."));
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        Requests.getAuthenticationPage(flow, samlRequest);
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019950","01100266", ""));
+        assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
-    */
+
 
     /**
      * Verifying that user receives proper error message when user inserts invalid id code
@@ -181,7 +191,6 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
         String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdError(flow, samlRequest, "60001019906", "", ""));
-        //String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdError(flow, "", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
