@@ -17,6 +17,10 @@ public class TestIdpProperties {
     private String idpUrl;
     private String idpMetadataUrl;
     private String idpStartUrl;
+    private String xRoadMockUrl;
+    private String xRoadUrl;
+    private String idpBackEndUrl;
+    private String idpDomainName;
 
     public String getRequestSigningKeyId() {
         return requestSigningKeyId;
@@ -124,5 +128,37 @@ public class TestIdpProperties {
 
     public void setIdpStartUrl(String idpStartUrl) {
         this.idpStartUrl = idpStartUrl;
+    }
+
+    public String getxRoadMockUrl() {
+        return xRoadMockUrl;
+    }
+
+    public void setxRoadMockUrl(String xRoadMockUrl) {
+        this.xRoadMockUrl = xRoadMockUrl;
+    }
+
+    public String getxRoadUrl() {
+        return xRoadUrl;
+    }
+
+    public void setxRoadUrl(String xRoadUrl) {
+        this.xRoadUrl = xRoadUrl;
+    }
+
+    public String getIdpBackEndUrl() {
+        return idpBackEndUrl;
+    }
+
+    public void setIdpBackEndUrl(String idpBackEndUrl) {
+        this.idpBackEndUrl = idpBackEndUrl;
+    }
+
+    public String getIdpDomainName() {
+        return idpDomainName;
+    }
+
+    public void setIdpDomainName(String idpDomainName) {
+        this.idpDomainName = idpDomainName;
     }
 }

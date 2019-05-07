@@ -38,6 +38,11 @@ Parameetrite kirjeldus:
 | test.idp.requestSigningKeyPass | changeit | Võtme parool. |
 | test.idp.responseDecryptionKeyId | test_sign | Võtmehoidlas oleva võtme alias mida kasutatakse SAML päringu allkirjastamiseks. eIDAS sõlme päringu simuleerimiseks. |
 | test.idp.responseDecryptionKeyPass | changeit | Võtme parool. |
+| test.idp.xRoadMockUrl | http://localhost:9999 | X-tee mocki url (Wiremock) |
+| test.idp.xRoadUrl | http://example.com | X-tee turvaserveri url |
+| test.idp.idpBackEndUrl | http://localhost:8080 | Testitava idp teenuse Tomcat-i Url ja port. |
+| test.idp.idpDomainName | localhost | Testitava idp teenuse domeeni nimi |
+
 
 4. Käivita testid:
 

@@ -1,9 +1,9 @@
 package ee.ria.idp.steps;
 
 
-import ee.ria.idp.config.OpenSAMLConfiguration;
 import ee.ria.idp.model.EidasFlow;
 import ee.ria.idp.utils.AllureRestAssuredFormParam;
+import ee.ria.idp.utils.OpenSAMLUtils;
 import ee.ria.idp.utils.SamlSigantureUtils;
 import io.qameta.allure.Step;
 import io.restassured.RestAssured;
@@ -11,9 +11,7 @@ import io.restassured.response.Response;
 import net.shibboleth.utilities.java.support.xml.XMLParserException;
 import org.joda.time.DateTime;
 import org.opensaml.core.xml.io.UnmarshallingException;
-import org.opensaml.core.xml.util.XMLObjectSupport;
 
-import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -33,9 +31,40 @@ public class MobileId {
 
         String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
         SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);
-        org.opensaml.saml.saml2.core.Response samlResponseObj = getSamlResponse(decodedSamlResponse);
+        org.opensaml.saml.saml2.core.Response samlResponseObj = OpenSAMLUtils.getSamlResponse(decodedSamlResponse);
         return samlResponseObj;
     }
+
+    @Step("Authenticate legal person with Mobile-ID")
+    public static org.opensaml.saml.saml2.core.Response authenticateLegalPersonWithMobileID(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language, String legalPersonIdentifier) throws InterruptedException, UnmarshallingException, XMLParserException {
+        openMidWelcome(flow, samlRequest);
+
+        io.restassured.response.Response response = submitMidLogin(flow, samlRequest, idCode, mobNo, language);
+
+        String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
+
+        pollLegalPersonForAuthentication(flow, sessionToken, 5000);
+        Steps.getLegalList(flow).then().statusCode(200);
+        Response loginResponse = Steps.confirmLegalPerson(flow, legalPersonIdentifier);
+        String samlResponse = loginResponse.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");
+        String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
+        SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);
+        org.opensaml.saml.saml2.core.Response samlResponseObj = OpenSAMLUtils.getSamlResponse(decodedSamlResponse);
+        return samlResponseObj;
+    }
+
+    @Step("Authenticate legal person with Mobile-ID")
+    public static Response legalPersonListWithMobileID(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
+        openMidWelcome(flow, samlRequest);
+
+        io.restassured.response.Response response = submitMidLogin(flow, samlRequest, idCode, mobNo, language);
+
+        String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
+
+        pollLegalPersonForAuthentication(flow, sessionToken, 5000);
+        return Steps.getLegalList(flow);
+    }
+
 
     @Step("Authenticate with Mobile-ID")
     public static Response authenticateWithMobileIdError(EidasFlow flow, String samlRequest, String idCode, String mobNo, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
@@ -90,6 +119,23 @@ public class MobileId {
     }
 
     @Step("Poll Mobile-ID authentication")
+    protected static void pollLegalPersonForAuthentication(EidasFlow flow, String sessionToken, Integer intervalMillis) throws InterruptedException {
+        DateTime endTime = new DateTime().plusMillis(intervalMillis * 3 + 200);
+        int attemptCounter = 1;
+        while (new DateTime().isBefore(endTime)) {
+            Thread.sleep(intervalMillis);
+            io.restassured.response.Response response = pollRequest(flow, sessionToken, attemptCounter);
+            attemptCounter++;
+            //TODO: handle translations
+            if (!response.htmlPath().getList("**.findAll { it.@type == 'submit' }").contains("Uuenda tulemust")) {
+                System.out.println(response.getBody());
+                return;
+            }
+        }
+        throw new RuntimeException("No MID response in: " + (intervalMillis * 3 + 200) + " millis");
+    }
+
+    @Step("Poll Mobile-ID authentication")
     protected static Response pollForAuthenticationError(EidasFlow flow, String sessionToken, Integer intervalMillis) throws InterruptedException {
         DateTime endTime = new DateTime().plusMillis(intervalMillis * 3 + 200);
         int attemptCounter = 1;
@@ -127,14 +173,6 @@ public class MobileId {
         String sessionToken = response.getBody().htmlPath().getString("**.findAll { it.@name == 'sessionToken' }[0].@value");
 
         return pollForAuthenticationError(flow, sessionToken, 5000);
-
-
-    }
-
-    //TODO: utility
-    protected static org.opensaml.saml.saml2.core.Response getSamlResponse(String samlResponse) throws XMLParserException, UnmarshallingException {
-        return (org.opensaml.saml.saml2.core.Response) XMLObjectSupport.unmarshallFromInputStream(
-                OpenSAMLConfiguration.getParserPool(), new ByteArrayInputStream(samlResponse.getBytes(StandardCharsets.UTF_8)));
     }
 
     public static String extractError(Response response) {

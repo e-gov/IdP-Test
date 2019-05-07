@@ -18,6 +18,13 @@ public class EidasTestStrings {
     public static final String FN_LEGAL_NAME = "LegalName";
     public static final String FN_LEGAL_PNO = "LegalPersonIdentifier";
 
+    public static final String FN_REPRESENTATIVE_DATE = "RepresentativeDateOfBirth";
+    public static final String FN_REPRESENTATIVE_PNO = "RepresentativePersonIdentifier";
+    public static final String FN_REPRESENTATIVE_FAMILY = "RepresentativeFamilyName";
+    public static final String FN_REPRESENTATIVE_FIRST = "RepresentativeFirstName";
+
+
+
     //Test data strings
     public static final String DEFATTR_FIRST = "MARY ÄNN";
     public static final String DEFATTR_FAMILY = "O’CONNEŽ-ŠUSLIK TESTNUMBER";
