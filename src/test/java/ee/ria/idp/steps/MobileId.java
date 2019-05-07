@@ -128,7 +128,6 @@ public class MobileId {
             attemptCounter++;
             //TODO: handle translations
             if (!response.htmlPath().getList("**.findAll { it.@type == 'submit' }").contains("Uuenda tulemust")) {
-                System.out.println(response.getBody());
                 return;
             }
         }
