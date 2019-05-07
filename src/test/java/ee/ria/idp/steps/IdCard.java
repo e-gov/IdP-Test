@@ -19,7 +19,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 
 public class IdCard {
-    @Step("Authenticate legal person with Mobile-ID")
+    @Step("Authenticate legal person with ID-Card")
     public static org.opensaml.saml.saml2.core.Response authenticateLegalPersonWithIdCard(EidasFlow flow, String samlRequest, String certificate, String language, String legalPersonIdentifier) throws InterruptedException, UnmarshallingException, XMLParserException {
         openAuth(flow, samlRequest);
         Response response = submitIdCardLogin(flow, samlRequest, certificate, language);
