@@ -17,15 +17,31 @@ import java.util.Base64;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class IdCard {
     @Step("Authenticate legal person with ID-Card")
     public static org.opensaml.saml.saml2.core.Response authenticateLegalPersonWithIdCard(EidasFlow flow, String samlRequest, String certificate, String language, String legalPersonIdentifier) throws InterruptedException, UnmarshallingException, XMLParserException {
         openAuth(flow, samlRequest);
         Response response = submitIdCardLogin(flow, samlRequest, certificate, language);
+        assertThat(response.cookie("JSESSIONID"), is(notNullValue()));
         flow.updateSessionCookie(response.cookie("JSESSIONID"));
         Steps.getLegalList(flow).then().statusCode(200);
         Response loginResponse = Steps.confirmLegalPerson(flow, legalPersonIdentifier);
+        String samlResponse = loginResponse.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");
+        String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
+        SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);
+        org.opensaml.saml.saml2.core.Response samlResponseObj = OpenSAMLUtils.getSamlResponse(decodedSamlResponse);
+        return samlResponseObj;
+    }
+    @Step("Authenticate with ID-Card")
+    public static org.opensaml.saml.saml2.core.Response authenticateWithIdCard(EidasFlow flow, String samlRequest, String certificate, String language) throws InterruptedException, UnmarshallingException, XMLParserException {
+        openAuth(flow, samlRequest);
+        Response loginResponse = submitIdCardLogin(flow, samlRequest, certificate, language);
+        assertThat(loginResponse.cookie("JSESSIONID"), is(notNullValue()));
+        flow.updateSessionCookie(loginResponse.cookie("JSESSIONID"));
         String samlResponse = loginResponse.getBody().htmlPath().getString("**.findAll { it.@name == 'SAMLResponse' }[0].@value");
         String decodedSamlResponse = new String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8);
         SamlSigantureUtils.validateSamlResponseSignature(decodedSamlResponse);

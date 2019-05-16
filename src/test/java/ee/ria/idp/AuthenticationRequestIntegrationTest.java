@@ -4,6 +4,9 @@ package ee.ria.idp;
 import ee.ria.idp.config.IntegrationTest;
 import ee.ria.idp.config.TestIdpProperties;
 import ee.ria.idp.model.EidasFlow;
+import ee.ria.idp.model.Representative;
+import ee.ria.idp.model.RepresentativeData;
+import ee.ria.idp.steps.IdCard;
 import ee.ria.idp.steps.MobileId;
 import ee.ria.idp.steps.Requests;
 import ee.ria.idp.steps.Steps;
@@ -21,8 +24,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import javax.xml.transform.TransformerException;
+import java.io.IOException;
 import java.security.KeyStore;
 import java.security.Security;
 
@@ -39,16 +45,19 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     private ResourceLoader resourceLoader;
     private static boolean setupComplete = false;
     private EidasFlow flow;
+    private static RepresentativeData data;
 
 
     @Before
-    public void setUp() throws InitializationException {
+    public void setUp() throws InitializationException, IOException {
         if (!setupComplete) {
             initialize();
             setupComplete = true;
         }
         flow = new EidasFlow();
         setupFlow(flow, testEidasIdpProperties);
+
+
     }
 
     void setupFlow(EidasFlow flow, TestIdpProperties properties) {
@@ -59,9 +68,11 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         flow.setup(properties);
     }
 
-    public void initialize() throws InitializationException {
+    public void initialize() throws InitializationException, IOException {
         InitializationService.initialize();
         Security.addProvider(new BouncyCastleProvider());
+        Yaml yaml = new Yaml(new Constructor(RepresentativeData.class));
+        data = (RepresentativeData) yaml.load(resourceLoader.getResource("testdata.yml").getInputStream());
         try {
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
             Resource resource = resourceLoader.getResource(testEidasIdpProperties.getKeystore());
@@ -88,6 +99,22 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         assertEquals("Correct id code is returned", DEFATTR_PNO, getAttributeValue(assertion, FN_PNO));
         assertEquals("Correct birth date is returned", DEFATTR_DATE, getAttributeValue(assertion, FN_DATE));
     }
+    @Test
+    public void idp1_authenticateWithIdCardSuccess() throws InterruptedException, UnmarshallingException, XMLParserException, TransformerException {
+        Representative representative = data.map.get("single_response");
+
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateWithIdCard(flow, samlRequest, representative.getCertificate(), "");
+        Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));
+        Steps.logSamlResponse(flow, samlResponse);
+
+        assertEquals("Correct LOA is returned", LOA_HIGH, getLoaValue(assertion));
+        assertEquals("Correct family name is returned", representative.getSurname(), getAttributeValue(assertion, FN_FAMILY));
+        assertEquals("Correct first name is returned", representative.getForename(), getAttributeValue(assertion, FN_FIRST));
+        assertEquals("Correct id code is returned", representative.getCode(), getAttributeValue(assertion, FN_PNO));
+        assertEquals("Correct birth date is returned", representative.getDateOfBirth(), getAttributeValue(assertion, FN_DATE));
+    }
+
     @Test
     public void idp1_authenticateWithMidWithoutIdCode() throws InterruptedException, UnmarshallingException, XMLParserException, TransformerException {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);

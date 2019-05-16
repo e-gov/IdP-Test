@@ -86,7 +86,6 @@ public class LegalPersonTest extends TestsBase {
         Representative representative = data.map.get("single_response");
         XRoadMock.useAsProxy(flow);
         String samlRequest = Steps.getLegalPersonAuthnRequestWithDefault(flow);
-        Requests.getAuthenticationPage(flow, samlRequest);
 
         org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateLegalPersonWithIdCard(flow, samlRequest, representative.getCertificate(), "", representative.getCompanies().get(0).getCode());
 
