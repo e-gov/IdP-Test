@@ -4,7 +4,6 @@ package ee.ria.idp;
 import ee.ria.idp.config.IntegrationTest;
 import ee.ria.idp.config.TestIdpProperties;
 import ee.ria.idp.model.EidasFlow;
-import ee.ria.idp.model.Representative;
 import ee.ria.idp.model.RepresentativeData;
 import ee.ria.idp.steps.IdCard;
 import ee.ria.idp.steps.MobileId;
@@ -28,9 +27,13 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 import javax.xml.transform.TransformerException;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.KeyStore;
 import java.security.Security;
+import java.util.stream.Collectors;
 
 import static ee.ria.idp.config.EidasTestStrings.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -99,24 +102,56 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         assertEquals("Correct id code is returned", DEFATTR_PNO, getAttributeValue(assertion, FN_PNO));
         assertEquals("Correct birth date is returned", DEFATTR_DATE, getAttributeValue(assertion, FN_DATE));
     }
+
     @Test
-    public void idp1_authenticateWithIdCardSuccess() throws InterruptedException, UnmarshallingException, XMLParserException, TransformerException {
-        Representative representative = data.map.get("single_response");
+    public void idp1_authenticateWithIdCardRsa2015Success() throws InterruptedException, UnmarshallingException, XMLParserException, IOException {
 
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
-        org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateWithIdCard(flow, samlRequest, representative.getCertificate(), "");
+        org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateWithIdCard(flow, samlRequest, getResourceFileAsString(resourceLoader, "37101010021.pem"), "");
         Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));
         Steps.logSamlResponse(flow, samlResponse);
 
         assertEquals("Correct LOA is returned", LOA_HIGH, getLoaValue(assertion));
-        assertEquals("Correct family name is returned", representative.getSurname(), getAttributeValue(assertion, FN_FAMILY));
-        assertEquals("Correct first name is returned", representative.getForename(), getAttributeValue(assertion, FN_FIRST));
-        assertEquals("Correct id code is returned", representative.getCode(), getAttributeValue(assertion, FN_PNO));
-        assertEquals("Correct birth date is returned", representative.getDateOfBirth(), getAttributeValue(assertion, FN_DATE));
+        assertEquals("Correct family name is returned", "ŽAIKOVSKI", getAttributeValue(assertion, FN_FAMILY));
+        assertEquals("Correct first name is returned", "IGOR", getAttributeValue(assertion, FN_FIRST));
+        assertEquals("Correct id code is returned", "37101010021", getAttributeValue(assertion, FN_PNO));
+        assertEquals("Correct birth date is returned", "1971-01-01", getAttributeValue(assertion, FN_DATE));
     }
 
     @Test
-    public void idp1_authenticateWithMidWithoutIdCode() throws InterruptedException, UnmarshallingException, XMLParserException, TransformerException {
+    public void idp1_authenticateWithIdCardEcc2015Success() throws InterruptedException, UnmarshallingException, XMLParserException, IOException {
+
+
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateWithIdCard(flow, samlRequest, getResourceFileAsString(resourceLoader, "47101010033.pem"), "");
+        Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));
+        Steps.logSamlResponse(flow, samlResponse);
+
+        assertEquals("Correct LOA is returned", LOA_HIGH, getLoaValue(assertion));
+        assertEquals("Correct family name is returned", "MÄNNIK", getAttributeValue(assertion, FN_FAMILY));
+        assertEquals("Correct first name is returned", "MARI-LIIS", getAttributeValue(assertion, FN_FIRST));
+        assertEquals("Correct id code is returned", "47101010033", getAttributeValue(assertion, FN_PNO));
+        assertEquals("Correct birth date is returned", "1971-01-01", getAttributeValue(assertion, FN_DATE));
+    }
+
+    @Test
+    public void idp1_authenticateWithIdCardEcc2018Success() throws InterruptedException, UnmarshallingException, XMLParserException, IOException {
+
+
+        String samlRequest = Steps.getAuthnRequestWithDefault(flow);
+        org.opensaml.saml.saml2.core.Response samlResponse = IdCard.authenticateWithIdCard(flow, samlRequest, getResourceFileAsString(resourceLoader, "38001085718.pem"), "");
+        Assertion assertion = decryptAssertion(samlResponse.getEncryptedAssertions().get(0));
+        Steps.logSamlResponse(flow, samlResponse);
+
+        assertEquals("Correct LOA is returned", LOA_HIGH, getLoaValue(assertion));
+        assertEquals("Correct family name is returned", "JÕEORG", getAttributeValue(assertion, FN_FAMILY));
+        assertEquals("Correct first name is returned", "JAAK-KRISTJAN", getAttributeValue(assertion, FN_FIRST));
+        assertEquals("Correct id code is returned", "38001085718", getAttributeValue(assertion, FN_PNO));
+        assertEquals("Correct birth date is returned", "1980-01-08", getAttributeValue(assertion, FN_DATE));
+    }
+
+    @Test
+    public void idp1_authenticateWithMidWithoutIdCode() throws InterruptedException, UnmarshallingException, XMLParserException {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
         org.opensaml.saml.saml2.core.Response samlResponse = MobileId.authenticateWithMobileID(flow, samlRequest, "", "00000766", "");
@@ -150,7 +185,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void mob2_mobileIdAuthenticationRequestToPhoneFailed() throws Exception {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019947","07110066", ""));
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019947", "07110066", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
@@ -158,7 +193,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void mob2_mobileIdAuthenticationTechnicalError() throws Exception {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019961","00000666", ""));
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019961", "00000666", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
@@ -166,7 +201,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void mob2_mobileIdAuthenticationSimApplicationError() throws Exception {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019972","01200266", ""));
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019972", "01200266", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
@@ -174,7 +209,7 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void mob2_mobileIdAuthenticationPhoneNotInNetwork() throws Exception {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019983","13100266", ""));
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019983", "13100266", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
 
@@ -182,10 +217,9 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
     public void mob3_mobileIdAuthenticationUserCancels() throws Exception {
         String samlRequest = Steps.getAuthnRequestWithDefault(flow);
         Requests.getAuthenticationPage(flow, samlRequest);
-        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019950","01100266", ""));
+        String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdPollError(flow, samlRequest, "60001019950", "01100266", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
     }
-
 
 
     /**
@@ -242,5 +276,14 @@ public class AuthenticationRequestIntegrationTest extends TestsBase {
         Requests.getAuthenticationPage(flow, samlRequest);
         String errorMessage = MobileId.extractError(MobileId.authenticateWithMobileIdError(flow, samlRequest, "", "", ""));
         assertThat(errorMessage, startsWith("Mobiil-ID autentimine ebaõnnestus"));
+    }
+
+    public static String getResourceFileAsString(ResourceLoader resourceLoader, String fileName) throws IOException {
+        InputStream is = resourceLoader.getResource(fileName).getInputStream();
+        if (is != null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            return reader.lines().collect(Collectors.joining());
+        }
+        return null;
     }
 }
